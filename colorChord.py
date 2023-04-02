@@ -1,5 +1,6 @@
 import math
 from enum import Enum
+from itertools import combinations
 
 
 class cNote(Enum):
@@ -107,62 +108,16 @@ class _Note:
         return _Note(cNote(new_ind))
 
 
-def find_ordered_subsets(my_list) -> list:
-    '''
-    寻找一个tuple按顺序不重复的子集
-    '''
-    subsets = []
-    for i in range(len(my_list)):
-        for j in range(i+1, len(my_list)+1):
-            subsets.append(my_list[i:j])
-    return subsets
-
-
-def keyboard_order(notes: list) -> list:
-    '''
-    将notes映射为键盘顺序，以C为起始
-    '''
-    keyboard_order = {
-        cNote.C: 1,
-        cNote.Db: 2,
-        cNote.D: 3,
-        cNote.Eb: 4,
-        cNote.E: 5,
-        cNote.F: 6,
-        cNote.Fsharp: 7,
-        cNote.G: 8,
-        cNote.Ab: 9,
-        cNote.A: 10,
-        cNote.Bb: 11,
-        cNote.B: 12,
-    }
-
-    sorted_order = sorted(keyboard_order[note] for note in notes)
-    return sorted_order
-
-
-def possible_consecutive_semitones(n: int) -> list:
-    '''
-    按键盘顺序的所有可能连续半音程的组合
-    '''
-    semitones = []
-    for i in range(1, 13):
-        temp = tuple(range(i, i+n+1))
-        semitone = sorted([num - 12 if num > 12 else num for num in temp])
-        if semitone not in semitones:
-            semitones.append(semitone)
-
-    return semitones
-
-
 class Chord:
 
     def __init__(self, notes: list, name=None):
         if len(notes) == 0:
             raise "没有输入音符"
-        notes = set(notes)  # 去除重复音符
         self.name = name
         self.temp_theta = None
+    
+        notes = set(notes)  # 去除重复音符
+        self.note_names = [i.name for i in notes]
         self.notes = []  # self.notes 存储音符_Note类实例的列表
         for i in notes:
             self.notes.append(_Note(i))
@@ -382,7 +337,7 @@ class Chord:
                     harmony = 5
                 elif Major2 <= 2 and (Major or Minor):
                     harmony = 4.67
-                elif Major2 > 2 and not (Major or Minor):
+                elif Major2 > 2 or not (Major or Minor):
                     harmony = 4.33
             elif (Minor2 == 2):
                 if Major2 <= 2 and (Major or Minor):
@@ -410,6 +365,24 @@ class Chord:
         else:
             pass
         return harmony
+    
+    def get_coordinates(self, method='r_theta') -> tuple:
+        '''
+        获得和弦极坐标或直角坐标，有多个可能角度的和弦选取最小角
+        '''
+        r = self.get_harmony()
+        theta = min(self.get_theta())
+        
+        if method == 'r_theta':
+            return (r, theta)
+        elif method == 'x_y':
+            angle = math.radians(theta)
+            x = r * math.cos(angle)
+            y = r * math.sin(angle)
+            return (x, y)
+        else:
+            print('Method does not exist, using default method r_theta.')
+            return (r, theta)
 
     @staticmethod
     def angle_diff(a1, a2):
@@ -476,3 +449,69 @@ class Chord:
         for i in self.notes:
             new_notes.append(i.next(n))
         return Chord.initBy_Note(new_notes, new_name)
+
+
+def all_chord_coordinates(n_notes=[3, 4], method='r_theta') -> dict:
+    '''
+    获得全部可能的和弦及其坐标
+    '''
+    notes = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'G#', 'D#', 'A#', 'F']
+    temp = []
+    if type(n_notes) == int:
+        n_notes = [n_notes]
+
+    chords =dict()
+    for i in n_notes:
+        temp += combinations(notes, i)
+    for ls in temp:
+        chord = Chord.init_by_note_name_str(ls)
+        chords[chord] = chord.get_coordinates(method=method)
+    
+    return chords
+
+def find_ordered_subsets(my_list) -> list:
+    '''
+    寻找一个tuple按顺序不重复的子集
+    '''
+    subsets = []
+    for i in range(len(my_list)):
+        for j in range(i+1, len(my_list)+1):
+            subsets.append(my_list[i:j])
+    return subsets
+
+
+def keyboard_order(notes: list) -> list:
+    '''
+    将notes映射为键盘顺序，以C为起始
+    '''
+    keyboard_order = {
+        cNote.C: 1,
+        cNote.Db: 2,
+        cNote.D: 3,
+        cNote.Eb: 4,
+        cNote.E: 5,
+        cNote.F: 6,
+        cNote.Fsharp: 7,
+        cNote.G: 8,
+        cNote.Ab: 9,
+        cNote.A: 10,
+        cNote.Bb: 11,
+        cNote.B: 12,
+    }
+
+    sorted_order = sorted(keyboard_order[note] for note in notes)
+    return sorted_order
+
+
+def possible_consecutive_semitones(n: int) -> list:
+    '''
+    按键盘顺序的所有可能连续半音程的组合
+    '''
+    semitones = []
+    for i in range(1, 13):
+        temp = tuple(range(i, i+n+1))
+        semitone = sorted([num - 12 if num > 12 else num for num in temp])
+        if semitone not in semitones:
+            semitones.append(semitone)
+
+    return semitones
